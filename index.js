@@ -31,10 +31,10 @@ app.get('/orders', async (req, res) => {
         total: o.current_total_price,
         currency: o.currency,
         customer: {
-          first_name: o.customer ? o.customer.first_name : '',
-          last_name: o.customer ? o.customer.last_name : '',
-          email: o.customer ? o.customer.email : '',
-          phone: o.customer ? o.customer.phone : ''
+          first_name: (o.customer && o.customer.first_name) || (o.shipping_address && o.shipping_address.first_name) || (o.billing_address && o.billing_address.first_name) || '',
+          last_name: (o.customer && o.customer.last_name) || (o.shipping_address && o.shipping_address.last_name) || (o.billing_address && o.billing_address.last_name) || '',
+          email: (o.customer && o.customer.email) || o.email || o.contact_email || '',
+          phone: (o.customer && o.customer.phone) || (o.shipping_address && o.shipping_address.phone) || o.phone || ''
         }
       };
     });
