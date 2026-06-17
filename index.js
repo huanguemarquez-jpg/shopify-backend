@@ -9,15 +9,36 @@ app.use(express.json());
 const STORE = process.env.SHOPIFY_STORE;   // ex: minha-loja.myshopify.com
 const TOKEN = process.env.SHOPIFY_TOKEN;   // shpat_xxx
 
+// Busca TODAS as páginas de pedidos (Shopify limita 250 por chamada)
+async function fetchAllOrders() {
+  let allOrders = [];
+  let url = `https://${STORE}/admin/api/2024-01/orders.json?status=open&limit=250`;
+
+  while (url) {
+    const response = await axios.get(url, {
+      headers: { 'X-Shopify-Access-Token': TOKEN }
+    });
+
+    allOrders = allOrders.concat(response.data.orders);
+
+    // Shopify usa cabeçalho "Link" com rel="next" para indicar próxima página
+    const linkHeader = response.headers['link'];
+    url = null;
+    if (linkHeader) {
+      const match = linkHeader.match(/<([^>]+)>;\s*rel="next"/);
+      if (match) url = match[1];
+    }
+  }
+
+  return allOrders;
+}
+
 // Rota principal — retorna pedidos com classificação de dias
 app.get('/orders', async (req, res) => {
   try {
-    const response = await axios.get(
-      `https://${STORE}/admin/api/2024-01/orders.json?status=open&limit=250`,
-      { headers: { 'X-Shopify-Access-Token': TOKEN } }
-    );
+    const rawOrders = await fetchAllOrders();
 
-    const orders = response.data.orders.map(function(o) {
+    const orders = rawOrders.map(function(o) {
       const days = Math.floor((new Date() - new Date(o.created_at)) / 86400000);
       const status = days <= 6 ? 'ok' : days <= 10 ? 'warn' : 'crit';
       return {
